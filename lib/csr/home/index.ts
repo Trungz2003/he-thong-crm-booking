@@ -47,3 +47,16 @@ export async function updateCreditConfig(data: StoreTierConfigRequest) {
     return null;
   }
 }
+
+export async function deleteUser(id: number) {
+  const api = apiClient();
+
+  try {
+    // Bỏ hẳn khai báo kiểu thủ công nếu không cần thiết, Axios sẽ tự hiểu
+    const res = await api.delete(`api/v1/customers/${id}`);
+    return res.data;
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return null;
+  }
+}

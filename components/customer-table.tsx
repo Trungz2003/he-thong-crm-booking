@@ -32,8 +32,8 @@ import { cn, getMetricStyle } from "@/lib/utils";
 import { tierConfig } from "@/hooks/tierConfig";
 import MetricWithTooltip from "./ui/metric-with-tooltip";
 import { Customer, CustomerResponse } from "@/interface/customer";
-import axios from "axios";
-import { getCustomers } from "@/lib/csr/home";
+import { deleteUser, getCustomers } from "@/lib/csr/home";
+import { useToast } from "@/hooks/use-toast";
 
 export type ReviewItem = {
   name: string;
@@ -65,6 +65,7 @@ export default function CustomerTable({
   const [filterBy, setFilterBy] = useState("all");
   const [filterTier, setFilterTier] = useState("all");
   const [customers, setCustomers] = useState<Customer[] | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -73,6 +74,45 @@ export default function CustomerTable({
     };
     fetchCustomers();
   }, []);
+
+  // 3. Hàm handleDelete sử dụng Toast đẹp mắt
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa khách hàng này không?")) {
+      return;
+    }
+
+    try {
+      const res = await deleteUser(id);
+
+      if (res) {
+        // Bắn toast thành công (Dùng variant default chuẩn giao diện sáng/tối)
+        toast({
+          title: "Thành công",
+          description: res.message || "Xóa khách hàng thành công.",
+        });
+
+        // Cập nhật ngay lập tức danh sách hiển thị trên UI
+        setCustomers((prevCustomers) => {
+          if (!prevCustomers) return null;
+          return prevCustomers.filter((customer) => customer.id !== id);
+        });
+      } else {
+        // Bắn toast thất bại (Dùng variant destructive màu đỏ)
+        toast({
+          variant: "destructive",
+          title: "Thất bại",
+          description: "Không thể xóa khách hàng này. Vui lòng thử lại!",
+        });
+      }
+    } catch (error) {
+      console.error("Lỗi khi xóa khách hàng:", error);
+      toast({
+        variant: "destructive",
+        title: "Lỗi hệ thống",
+        description: "Đã xảy ra lỗi ngoài ý muốn. Vui lòng thử lại sau!",
+      });
+    }
+  };
 
   const filteredCustomers = customers
     ?.filter((customer) => {
@@ -522,7 +562,7 @@ export default function CustomerTable({
                             <Button
                               size="sm"
                               variant="secondary"
-                              onClick={() => onOpenDetail?.(customer)}
+                              onClick={() => handleDelete(customer.id)}
                               className="gap-1 text-xs"
                             >
                               <Trash2 className="w-4 h-4" />

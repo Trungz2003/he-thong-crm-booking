@@ -27,6 +27,80 @@ export default function CustomerDetailDrawer({
   const tier = tierConfig[customer.tier];
   const Icon = tier.icon;
 
+  if (!customer) return null;
+
+  // --- LOGIC PHÂN TÍCH VÀ ĐẾM DỮ LIỆU TỪ API ---
+  const currentStage = customer.interactionStage || 1; // Giá trị thực tế: 6
+  const bookings = customer.recentBookings || [];
+
+  // Phân loại bookings theo từng cột dựa trên cấu trúc dữ liệu thực tế để map xuống hàng dưới
+  const stage1Bookings: any[] = [];
+  const stage2Bookings: any[] = [];
+  const stage3Bookings: any[] = [];
+
+  // Cột 4: Tin cậy (Ứng với fine_dining như Maison Dining trong dữ liệu mẫu)
+  const stage4Bookings = bookings.filter((b: any) => b.type === "fine_dining");
+
+  // Cột 5: Gắn bó (Ứng với japanese như Sora Sushi trong dữ liệu mẫu)
+  const stage5Bookings = bookings.filter((b: any) => b.type === "japanese");
+
+  const stage6Bookings: any[] = []; // Tri kỷ
+
+  // Hàm helper lấy tên viết tắt của nhân viên (Ví dụ: "Nhan vien phu trach: TH" -> "TH")
+  const getStaffInitials = (workingNote: string) => {
+    if (!workingNote) return "CS";
+    const parts = workingNote.split(": ");
+    return parts[1] ? parts[1].trim() : "CS";
+  };
+
+  // Hàm helper lấy tên đầy đủ của nhân viên từ mã viết tắt
+  const getStaffFullName = (initials: string) => {
+    switch (initials) {
+      case "TH":
+        return "Thu Hà - CSKH";
+      case "HG":
+        return "Hương Giang - CSKH";
+      default:
+        return "Chăm Sóc Khách Hàng";
+    }
+  };
+
+  // Hàm helper render danh sách các nút avatar cho từng cột ở hàng dưới
+  const renderBookingNodes = (stageBookings: any[]) => {
+    return (
+      <div className="flex flex-col gap-3 items-center">
+        {stageBookings.map((booking: any) => {
+          const initials = getStaffInitials(booking.workingNote);
+          const fullName = getStaffFullName(initials);
+          // Định dạng lại hiển thị thời gian từ dữ liệu API
+          const displayTime = `${booking.date} ${booking.time ? booking.time.substring(0, 5) : ""}`;
+
+          return (
+            <div key={booking.id} className="flex flex-col items-center">
+              <button
+                className="relative z-10 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold text-xs flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-200 border-3 border-white cursor-pointer"
+                onClick={() => setIsOpenViewNotes(true)}
+              >
+                {initials}
+              </button>
+              <div className="mt-2 text-center">
+                <div className="text-[10px] font-medium text-gray-900">
+                  {displayTime}
+                </div>
+                <div className="text-[10px] text-gray-500 mt-0.5 max-w-[80px] truncate">
+                  {fullName}
+                </div>
+              </div>
+              <div className="mt-1.5 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-medium rounded-full">
+                #{booking.id}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <>
       {/* Overlay */}
@@ -519,8 +593,8 @@ export default function CustomerDetailDrawer({
             </div>
           </div>
 
-          {/* Section 3: Metrics Grid
-          <div className="w-full">
+          {/* </div>Section 3: Metrics Grid */}
+          {/* <div className="w-full">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-base font-semibold text-gray-900">
@@ -796,7 +870,7 @@ export default function CustomerDetailDrawer({
                     }}
                   >
                     <div className="flex flex-col gap-3 items-center">
-                      {/* <div className="flex flex-col items-center">
+                      <div className="flex flex-col items-center">
                         <button className="relative z-10 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold text-xs flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-200 border-3 border-white">
                           HG
                         </button>
@@ -811,8 +885,8 @@ export default function CustomerDetailDrawer({
                         <div className="mt-1.5 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-medium rounded-full">
                           #1
                         </div>
-                      </div> */}
-          {/* <div className="flex flex-col items-center">
+                      </div>
+                      <div className="flex flex-col items-center">
                         <button className="relative z-10 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold text-xs flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-200 border-3 border-white">
                           TH
                         </button>
@@ -827,7 +901,7 @@ export default function CustomerDetailDrawer({
                         <div className="mt-1.5 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-medium rounded-full">
                           #2
                         </div>
-                      </div> 
+                      </div>
                     </div>
                   </div>
                   <div
@@ -842,7 +916,260 @@ export default function CustomerDetailDrawer({
               </div>
             </div>
           </div> */}
+          <div className="w-full">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">
+                  Hồ sơ hiểu khách hàng
+                </h3>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Timeline ghi nhận insights qua từng lần tương tác
+                </p>
+              </div>
+              <button
+                data-slot="button"
+                className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg:not([class*='size-'])]:size-4 shrink-0 [&amp;_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-primary text-primary-foreground hover:bg-primary/90 h-8 rounded-md px-3 has-[&gt;svg]:px-2.5 gap-2"
+                onClick={() => setIsOpenAddNotes(true)}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="lucide lucide-plus w-4 h-4"
+                >
+                  <path d="M5 12h14"></path>
+                  <path d="M12 5v14"></path>
+                </svg>
+                Thêm ghi nhận mới
+              </button>
+            </div>
 
+            <div className="relative">
+              {/* HÀNG TRÊN: TIẾN TRÌNH CÁC GIAI ĐOẠN */}
+              <div className="relative mb-8">
+                <div className="absolute top-5 left-0 right-0 h-0.5 bg-gradient-to-r from-gray-200 via-blue-200 via-purple-200 to-red-200"></div>
+                <div className="flex gap-8 overflow-x-auto pb-3 pt-1">
+                  {/* Giai đoạn 1: Nhận diện */}
+                  <div
+                    className="flex flex-col items-center"
+                    style={{ minWidth: "80px", flexShrink: 0 }}
+                  >
+                    <div
+                      className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-4 border-white font-bold text-sm transition-all duration-200 ${currentStage === 1 ? "opacity-100" : "opacity-30"}`}
+                      title="Nhận diện"
+                      style={{
+                        backgroundColor: "rgb(217, 217, 217)",
+                        color: "rgb(55, 65, 81)",
+                      }}
+                    >
+                      1
+                    </div>
+                    <div className="mt-2 text-center w-full">
+                      <div
+                        className={`text-xs font-semibold whitespace-nowrap ${currentStage === 1 ? "opacity-100" : "opacity-40"}`}
+                        style={{ color: "rgb(217, 217, 217)" }}
+                      >
+                        Nhận diện
+                      </div>
+                      {stage1Bookings.length > 0 && (
+                        <div className="text-[10px] text-gray-500 mt-0.5">
+                          {stage1Bookings.length} ghi nhận
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Giai đoạn 2: Kết nối */}
+                  <div
+                    className="flex flex-col items-center"
+                    style={{ minWidth: "80px", flexShrink: 0 }}
+                  >
+                    <div
+                      className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-4 border-white font-bold text-sm transition-all duration-200 ${currentStage === 2 ? "opacity-100" : "opacity-30"}`}
+                      title="Kết nối"
+                      style={{
+                        backgroundColor: "rgb(183, 215, 242)",
+                        color: "rgb(30, 64, 175)",
+                      }}
+                    >
+                      2
+                    </div>
+                    <div className="mt-2 text-center w-full">
+                      <div
+                        className={`text-xs font-semibold whitespace-nowrap ${currentStage === 2 ? "opacity-100" : "opacity-40"}`}
+                        style={{ color: "rgb(183, 215, 242)" }}
+                      >
+                        Kết nối
+                      </div>
+                      {stage2Bookings.length > 0 && (
+                        <div className="text-[10px] text-gray-500 mt-0.5">
+                          {stage2Bookings.length} ghi nhận
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Giai đoạn 3: Thấu hiểu */}
+                  <div
+                    className="flex flex-col items-center"
+                    style={{ minWidth: "80px", flexShrink: 0 }}
+                  >
+                    <div
+                      className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-4 border-white font-bold text-sm transition-all duration-200 ${currentStage === 3 ? "opacity-100" : "opacity-30"}`}
+                      title="Thấu hiểu"
+                      style={{
+                        backgroundColor: "rgb(77, 163, 255)",
+                        color: "rgb(255, 255, 255)",
+                      }}
+                    >
+                      3
+                    </div>
+                    <div className="mt-2 text-center w-full">
+                      <div
+                        className={`text-xs font-semibold whitespace-nowrap ${currentStage === 3 ? "opacity-100" : "opacity-40"}`}
+                        style={{ color: "rgb(77, 163, 255)" }}
+                      >
+                        Thấu hiểu
+                      </div>
+                      {stage3Bookings.length > 0 && (
+                        <div className="text-[10px] text-gray-500 mt-0.5">
+                          {stage3Bookings.length} ghi nhận
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Giai đoạn 4: Tin cậy */}
+                  <div
+                    className="flex flex-col items-center"
+                    style={{ minWidth: "80px", flexShrink: 0 }}
+                  >
+                    <div
+                      className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-4 border-white font-bold text-sm transition-all duration-200 ${currentStage === 4 ? "opacity-100" : "opacity-30"}`}
+                      title="Tin cậy"
+                      style={{
+                        backgroundColor: "rgb(198, 164, 255)",
+                        color: "rgb(88, 28, 135)",
+                      }}
+                    >
+                      4
+                    </div>
+                    <div className="mt-2 text-center w-full">
+                      <div
+                        className={`text-xs font-semibold whitespace-nowrap ${currentStage === 4 ? "opacity-100" : "opacity-40"}`}
+                        style={{ color: "rgb(198, 164, 255)" }}
+                      >
+                        Tin cậy
+                      </div>
+                      <div className="text-[10px] text-gray-500 mt-0.5">
+                        {stage4Bookings.length} ghi nhận
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Giai đoạn 5: Gắn bó */}
+                  <div
+                    className="flex flex-col items-center"
+                    style={{ minWidth: "80px", flexShrink: 0 }}
+                  >
+                    <div
+                      className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-4 border-white font-bold text-sm transition-all duration-200 ${currentStage === 5 ? "opacity-100" : "opacity-30"}`}
+                      title="Gắn bó"
+                      style={{
+                        backgroundColor: "rgb(255, 178, 107)",
+                        color: "rgb(124, 45, 18)",
+                      }}
+                    >
+                      5
+                    </div>
+                    <div className="mt-2 text-center w-full">
+                      <div
+                        className={`text-xs font-semibold whitespace-nowrap ${currentStage === 5 ? "opacity-100" : "opacity-40"}`}
+                        style={{ color: "rgb(255, 178, 107)" }}
+                      >
+                        Gắn bó
+                      </div>
+                      <div className="text-[10px] text-gray-500 mt-0.5">
+                        {stage5Bookings.length} ghi nhận
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Giai đoạn 6: Tri kỷ */}
+                  <div
+                    className="flex flex-col items-center"
+                    style={{ minWidth: "80px", flexShrink: 0 }}
+                  >
+                    <div
+                      className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-4 border-white font-bold text-sm transition-all duration-200 ${currentStage === 6 ? "opacity-100" : "opacity-30"}`}
+                      title="Tri kỷ"
+                      style={{
+                        backgroundColor: "rgb(122, 30, 58)",
+                        color: "rgb(255, 255, 255)",
+                      }}
+                    >
+                      6
+                    </div>
+                    <div className="mt-2 text-center w-full">
+                      <div
+                        className={`text-xs font-semibold whitespace-nowrap ${currentStage === 6 ? "opacity-100" : "opacity-40"}`}
+                        style={{ color: "rgb(122, 30, 58)" }}
+                      >
+                        Tri kỷ
+                      </div>
+                      {stage6Bookings.length > 0 && (
+                        <div className="text-[10px] text-gray-500 mt-0.5">
+                          {stage6Bookings.length} ghi nhận
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* HÀNG DƯỚI: TIMELINE CHI TIẾT CÁC LƯỢT TƯƠNG TÁC GẮN VỚI ĐƠN HÀNG */}
+              <div className="relative">
+                <div className="absolute top-5 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-200 via-blue-300 to-blue-200"></div>
+                <div className="flex gap-8 overflow-x-auto pb-3 pt-1">
+                  {/* Cột 1 */}
+                  <div style={{ minWidth: "80px", flexShrink: 0 }}>
+                    {renderBookingNodes(stage1Bookings)}
+                  </div>
+
+                  {/* Cột 2 */}
+                  <div style={{ minWidth: "80px", flexShrink: 0 }}>
+                    {renderBookingNodes(stage2Bookings)}
+                  </div>
+
+                  {/* Cột 3 */}
+                  <div style={{ minWidth: "80px", flexShrink: 0 }}>
+                    {renderBookingNodes(stage3Bookings)}
+                  </div>
+
+                  {/* Cột 4 - Ánh xạ các đơn hàng Fine Dining (ID: 3, ID: 1) */}
+                  <div style={{ minWidth: "80px", flexShrink: 0 }}>
+                    {renderBookingNodes(stage4Bookings)}
+                  </div>
+
+                  {/* Cột 5 - Ánh xạ các đơn hàng Japanese (ID: 2) */}
+                  <div style={{ minWidth: "80px", flexShrink: 0 }}>
+                    {renderBookingNodes(stage5Bookings)}
+                  </div>
+
+                  {/* Cột 6 */}
+                  <div style={{ minWidth: "80px", flexShrink: 0 }}>
+                    {renderBookingNodes(stage6Bookings)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
           {/* Section 4: Timeline */}
           <div className="border border-gray-300 rounded-lg bg-gray-50">
             <div className="bg-green-50 border-b border-green-200 px-3 py-1.5">
